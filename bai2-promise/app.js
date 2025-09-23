@@ -1,5 +1,6 @@
 const $ = document.querySelector.bind(document);
 const $$ = document.querySelectorAll.bind(document);
+const API_BASE = "https://jsonplaceholder.typicode.com";
 
 // 2.1. Tạo Promise wrapper cho XHR
 function sendRequest(method, url) {
@@ -50,10 +51,9 @@ function showError(message, errorElement, errorTextElement, container) {
 }
 
 function displayUserInfo(user) {
-    // userErrorElement.style.display = "none"; // ẩn thông báo lỗi, nếu có
     userProfileCard.style.display = "block";
 
-    userAvatar.textContent = user.name[0];
+    userAvatar.textContent = user?.name[0];
     userName.textContent = user.name;
     userEmail.textContent = user.email;
     userPhone.textContent = user.phone;
@@ -82,7 +82,7 @@ searchUserBtn.addEventListener("click", () => {
 
     userErrorElement.style.display = "none"; // ẩn thông báo lỗi, nếu có
     userLoadingElement.style.display = "block"; // hiển thị trạng thái loading khi click
-    const url = `https://jsonplaceholder.typicode.com/users/${userID}`;
+    const url = `${API_BASE}/users/${userID}`;
 
     sendRequest("GET", url)
         .then((user) => {
@@ -215,7 +215,7 @@ function loadMorePosts(amount) {
 
     // 1 mảng các promise
     const userRequests = newPosts.map((post) => {
-        const userUrl = `https://jsonplaceholder.typicode.com/users/${post.userId}`;
+        const userUrl = `${API_BASE}/users/${post.userId}`;
         return sendRequest("GET", userUrl);
     });
     Promise.all(userRequests)
@@ -234,8 +234,8 @@ function loadMorePosts(amount) {
 
 // Tự động load 5 posts đầu tiên khi vào trang
 postsLoadingElement.style.display = "block"; // hiển thị hiệu ứng loading posts
-// const url = "https://jsonplaceholder.typicode.com/posts";
-const url = "https://jsonplaceholder.typicode.com/posts?_limit=11";
+// const url = `${API_BASE}/posts`;
+const url = `${API_BASE}/posts?_limit=11`;
 
 sendRequest("GET", url)
     .then((posts) => {
@@ -252,7 +252,7 @@ sendRequest("GET", url)
 
         // lấy user -> suy ra userName để gắn vào mỗi post
         const userRequests = firstFivePosts.map((post) => {
-            const userUrl = `https://jsonplaceholder.typicode.com/users/${post.userId}`;
+            const userUrl = `${API_BASE}/users/${post.userId}`;
 
             return sendRequest("GET", userUrl);
         });
@@ -285,7 +285,7 @@ postsContainer.addEventListener("click", (e) => {
     if (!showCommentsButton) return;
 
     const postId = showCommentsButton.dataset.postId;
-    const commentUrl = `https://jsonplaceholder.typicode.com/posts/${postId}/comments`;
+    const commentUrl = `${API_BASE}/posts/${postId}/comments`;
     commentsLoadingElement.style.display = "block"; // hiển thị hiệu ứng loading comments
 
     sendRequest("GET", commentUrl)
@@ -397,7 +397,7 @@ loadTodosBtn.addEventListener("click", () => {
     todosErrorElement.style.display = "none"; // ẩn thông báo lỗi, nếu đang hiện
     todosLoadingElement.style.display = "block"; // hiển thị hiệu ứng loading
 
-    const url = `https://jsonplaceholder.typicode.com/users/${userID}/todos`;
+    const url = `${API_BASE}/users/${userID}/todos`;
     sendRequest("GET", url)
         .then((todoList) => {
             allTodoList = todoList;

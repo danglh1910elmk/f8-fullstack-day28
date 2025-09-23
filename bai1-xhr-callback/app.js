@@ -1,5 +1,6 @@
 const $ = document.querySelector.bind(document);
 const $$ = document.querySelectorAll.bind(document);
+const API_BASE = "https://jsonplaceholder.typicode.com";
 
 // 1.1. Tạo utility function để gọi API với XHR
 function sendRequest(method, url, callback) {
@@ -52,10 +53,9 @@ function showError(message, errorElement, errorTextElement, container) {
 }
 
 function displayUserInfo(user) {
-    // userErrorElement.style.display = "none"; // ẩn thông báo lỗi, nếu có
     userProfileCard.style.display = "block";
 
-    userAvatar.textContent = user.name[0];
+    userAvatar.textContent = user?.name[0];
     userName.textContent = user.name;
     userEmail.textContent = user.email;
     userPhone.textContent = user.phone;
@@ -66,7 +66,7 @@ function displayUserInfo(user) {
 
 searchUserBtn.addEventListener("click", () => {
     const userID = +userIDInput.value;
-    const url = `https://jsonplaceholder.typicode.com/users/${userID}`;
+    const url = `${API_BASE}/users/${userID}`;
 
     if (!userID || userID < 1 || userID > 10) {
         // trường hợp nhấn tìm kiếm nhưng input để trống hoặc trong khoảng không hợp lệ
@@ -197,38 +197,34 @@ function renderComments(comments, container) {
 
 // Tự động load 5 posts đầu tiên khi vào trang
 postsLoadingElement.style.display = "block"; // hiển thị hiệu ứng loading
-sendRequest(
-    "GET",
-    "https://jsonplaceholder.typicode.com/posts?_limit=5",
-    (error, posts) => {
-        postsLoadingElement.style.display = "none"; // ẩn hiệu ứng loading khi load xong
+sendRequest("GET", `${API_BASE}/posts?_limit=5`, (error, posts) => {
+    postsLoadingElement.style.display = "none"; // ẩn hiệu ứng loading khi load xong
 
-        if (!error) {
-            posts.forEach((post) => {
-                const url = `https://jsonplaceholder.typicode.com/users/${post.userId}`;
-                sendRequest("GET", url, (error, user) => {
-                    if (!error) {
-                        // tạo postItem sau đó thêm vào postsContainer
-                        const postItem = generatePostItem(post, user.name);
-                        postsContainer.innerHTML += postItem;
-                    } else {
-                        // xử lý lỗi
-                        postsErrorElement.style.display = "block";
-                        postsErrorText.textContent =
-                            "Có lỗi xảy ra khi tải tên tác giả!";
+    if (!error) {
+        posts.forEach((post) => {
+            const url = `${API_BASE}/users/${post.userId}`;
+            sendRequest("GET", url, (error, user) => {
+                if (!error) {
+                    // tạo postItem sau đó thêm vào postsContainer
+                    const postItem = generatePostItem(post, user.name);
+                    postsContainer.innerHTML += postItem;
+                } else {
+                    // xử lý lỗi
+                    postsErrorElement.style.display = "block";
+                    postsErrorText.textContent =
+                        "Có lỗi xảy ra khi tải tên tác giả!";
 
-                        throw new Error(`HTTP code: ${error}`);
-                    }
-                });
+                    throw new Error(`HTTP code: ${error}`);
+                }
             });
-        } else {
-            // xử lý lỗi
-            postsErrorElement.style.display = "block";
+        });
+    } else {
+        // xử lý lỗi
+        postsErrorElement.style.display = "block";
 
-            throw new Error(`HTTP code: ${error}`);
-        }
+        throw new Error(`HTTP code: ${error}`);
     }
-);
+});
 
 // khi nhấn vào Xem comments
 postsContainer.addEventListener("click", (e) => {
@@ -242,7 +238,7 @@ postsContainer.addEventListener("click", (e) => {
     if (!showCommentsButton) return;
 
     const postId = showCommentsButton.dataset.postId;
-    const url = `https://jsonplaceholder.typicode.com/posts/${postId}/comments`;
+    const url = `${API_BASE}/posts/${postId}/comments`;
     commentsLoadingElement.style.display = "block"; // hiển thị hiệu ứng loading
 
     sendRequest("GET", url, (error, comments) => {
@@ -350,7 +346,7 @@ loadTodosBtn.addEventListener("click", () => {
     todosErrorElement.style.display = "none"; // ẩn thông báo lỗi, nếu đang hiện
     todosLoadingElement.style.display = "block"; // hiển thị hiệu ứng loading
 
-    const url = `https://jsonplaceholder.typicode.com/users/${userID}/todos`;
+    const url = `${API_BASE}/users/${userID}/todos`;
     sendRequest("GET", url, (error, todoList) => {
         // ẩn hiệu ứng loading
         todosLoadingElement.style.display = "none";
