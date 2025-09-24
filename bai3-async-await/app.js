@@ -2,23 +2,51 @@ const $ = document.querySelector.bind(document);
 const $$ = document.querySelectorAll.bind(document);
 const API_BASE = "https://jsonplaceholder.typicode.com";
 
-async function sendRequest(url) {
-    try {
-        const response = await fetch(url);
+// async function sendRequest(url) {
+//     try {
+//         const response = await fetch(url);
 
-        if (!response.ok) {
-            // throw new Error(`HTTP error: ${response.status}`);
-            // throw response.status;
-            const error = new Error("HTTP error");
-            error.status = response.status;
-            throw error;
+//         if (!response.ok) {
+//             const error = new Error("HTTP error");
+//             error.status = response.status;
+//             throw error;
+//         }
+//         return await response.json();
+//     } catch (error) {
+//         if (error instanceof TypeError) {
+//             error.isNetworkError = true;
+//         }
+//         throw error;
+//     }
+// }
+
+async function sendRequest(url, maxRetries = 2, delayMs = 2000) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                const error = new Error("HTTP error");
+                error.status = response.status;
+                throw error;
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.warn(`Attempt ${attempt} failed: ${error.message}`);
+
+            // If this is the last attempt, re-throw the error
+            if (attempt === maxRetries) {
+                if (error instanceof TypeError) {
+                    error.isNetworkError = true;
+                }
+                throw error;
+            }
+
+            // Wait before the next retry
+            console.log(`Retrying in ${delayMs / 1000}s...`);
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
         }
-        return await response.json();
-    } catch (error) {
-        if (error instanceof TypeError) {
-            error.isNetworkError = true;
-        }
-        throw error;
     }
 }
 
@@ -338,8 +366,8 @@ postsContainer.addEventListener("click", async (e) => {
 });
 
 // chức năng Load more comments
-loadMoreBtn.addEventListener("click", () => {
-    loadMorePosts(5);
+loadMoreBtn.addEventListener("click", async () => {
+    await loadMorePosts(5);
 });
 
 initialLoad();
