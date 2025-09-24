@@ -227,6 +227,9 @@ function renderComments(comments, container) {
 }
 
 async function loadMorePosts(amount) {
+    postsLoadingElement.style.display = "block"; // hiển thị hiệu ứng loading posts
+    postsErrorElement.style.display = "none";
+
     let newPosts = []; // posts cần hiển thị
 
     // kiểm tra số lượng tải thêm có lớn hơn tổng số posts?
@@ -247,9 +250,6 @@ async function loadMorePosts(amount) {
         displayedPostCount = displayedPostCount + amount;
     }
 
-    postsLoadingElement.style.display = "block"; // hiển thị hiệu ứng loading posts
-    postsErrorElement.style.display = "none";
-
     try {
         // 1 mảng các promise
         const userRequests = newPosts.map((post) => {
@@ -262,12 +262,10 @@ async function loadMorePosts(amount) {
         // render
         renderPosts(newPosts, users);
     } catch (error) {
-        let errorMessage = "";
+        let errorMessage = "Có lỗi xảy ra khi tải posts!";
 
         if (error.isNetworkError && error instanceof TypeError) {
             errorMessage = "Network Error!";
-        } else {
-            errorMessage = "Có lỗi xảy ra khi tải posts!";
         }
 
         showError(errorMessage, postsErrorElement, postsErrorText);
@@ -285,35 +283,16 @@ async function initialLoad() {
     try {
         const posts = await sendRequest(postsUrl);
         allPosts = posts;
-        const firstFivePosts = posts.slice(0, 5);
 
         // hiển thị nút load more posts
         loadMoreBtn.style.display = "block";
 
-        // nếu số lượng posts >=5 thì tăng displayedPostCount lên 5, nếu không gán = posts.length
-        posts.length >= 5
-            ? (displayedPostCount = 5)
-            : (displayedPostCount = posts.length);
-
-        // đề bài yêu cầu phải hiện tên tác giả trên mỗi bài post
-        // lấy user -> suy ra userName để gắn vào mỗi post
-        const userRequests = firstFivePosts.map((post) => {
-            const userUrl = `${API_BASE}/users/${post.userId}`;
-
-            return sendRequest(userUrl);
-        });
-
-        const users = await Promise.all(userRequests);
-
-        // render
-        renderPosts(firstFivePosts, users);
+        await loadMorePosts(5);
     } catch (error) {
-        let errorMessage = "";
+        let errorMessage = "Có lỗi xảy ra khi tải posts!";
 
         if (error.isNetworkError && error instanceof TypeError) {
             errorMessage = "Network Error!";
-        } else {
-            errorMessage = "Có lỗi xảy ra khi tải posts!";
         }
 
         showError(
@@ -322,8 +301,6 @@ async function initialLoad() {
             postsErrorText,
             postsContainer
         );
-    } finally {
-        postsLoadingElement.style.display = "none"; // ẩn hiệu ứng loading
     }
 }
 
