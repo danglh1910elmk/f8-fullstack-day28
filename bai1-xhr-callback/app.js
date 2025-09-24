@@ -96,7 +96,7 @@ searchUserBtn.addEventListener("click", () => {
             displayUserInfo(user);
         } else {
             // xử lý lỗi
-            let errorMessage = "";
+            let errorMessage = "Có lỗi xảy ra khi tải thông tin user";
 
             if (error === 404) {
                 errorMessage = "User không tồn tại!";
@@ -104,8 +104,6 @@ searchUserBtn.addEventListener("click", () => {
                 errorMessage = "Lỗi Server!";
             } else if (error === "Network Error!") {
                 errorMessage = error;
-            } else {
-                errorMessage = "Có lỗi xảy ra khi tải thông tin user";
             }
 
             showError(
@@ -200,8 +198,6 @@ function renderComments(comments, container) {
 // Tự động load 5 posts đầu tiên khi vào trang
 postsLoadingElement.style.display = "block"; // hiển thị hiệu ứng loading
 sendRequest("GET", `${API_BASE}/posts?_limit=5`, (error, posts) => {
-    // postsLoadingElement.style.display = "none"; // ẩn hiệu ứng loading khi load xong
-
     if (!error) {
         posts.forEach((post) => {
             const userUrl = `${API_BASE}/users/${post.userId}`;
@@ -226,12 +222,10 @@ sendRequest("GET", `${API_BASE}/posts?_limit=5`, (error, posts) => {
         });
     } else {
         // xử lý lỗi
-        let errorMessage = "";
+        let errorMessage = "Có lỗi xảy ra khi tải posts!";
 
         if (error === "Network Error!") {
             errorMessage = error;
-        } else {
-            errorMessage = "Có lỗi xảy ra khi tải posts!";
         }
 
         showError(
@@ -272,12 +266,13 @@ postsContainer.addEventListener("click", (e) => {
             renderComments(comments, commentsContainer);
         } else {
             // lỗi
+            commentsErrorTextElement.textContent =
+                "Có lỗi xảy ra khi tải comments!";
+
             if (error === "Network Error!") {
                 commentsErrorTextElement.textContent = error;
-            } else {
-                commentsErrorTextElement.textContent =
-                    "Có lỗi xảy ra khi tải comments!";
             }
+
             commentsErrorElement.style.display = "block";
 
             throw new Error(`HTTP code: ${error}`);
@@ -407,7 +402,7 @@ loadTodosBtn.addEventListener("click", () => {
             });
         } else {
             // xử lý lỗi
-            let errorMessage = "";
+            let errorMessage = "Có lỗi xảy ra khi tải thông tin user";
 
             if (error === 404) {
                 errorMessage = "User không tồn tại!";
@@ -415,8 +410,6 @@ loadTodosBtn.addEventListener("click", () => {
                 errorMessage = "Lỗi Server!";
             } else if (error === "Network Error!") {
                 errorMessage = error;
-            } else {
-                errorMessage = "Có lỗi xảy ra khi tải thông tin user";
             }
 
             showError(

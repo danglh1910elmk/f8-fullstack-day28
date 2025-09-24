@@ -118,7 +118,7 @@ searchUserBtn.addEventListener("click", async () => {
         const user = await sendRequest(url);
         displayUserInfo(user);
     } catch (error) {
-        let errorMessage = "";
+        let errorMessage = "Có lỗi xảy ra khi tải thông tin user";
 
         if (error.isNetworkError && error instanceof TypeError) {
             errorMessage = "Network Error!";
@@ -126,8 +126,6 @@ searchUserBtn.addEventListener("click", async () => {
             errorMessage = "User không tồn tại!";
         } else if (error.status >= 500 && error.status < 600) {
             errorMessage = "Lỗi Server!";
-        } else {
-            errorMessage = "Có lỗi xảy ra khi tải thông tin user";
         }
 
         showError(
@@ -330,12 +328,13 @@ postsContainer.addEventListener("click", async (e) => {
         // render
         renderComments(comments, commentsContainer);
     } catch (error) {
+        commentsErrorTextElement.textContent =
+            "Có lỗi xảy ra khi tải comments!";
+
         if (error.isNetworkError && error instanceof TypeError) {
             commentsErrorTextElement.textContent = "Network Error!";
-        } else {
-            commentsErrorTextElement.textContent =
-                "Có lỗi xảy ra khi tải comments!";
         }
+
         commentsErrorElement.style.display = "block";
     } finally {
         commentsLoadingElement.style.display = "none"; // ẩn hiệu ứng loading comments
@@ -450,7 +449,7 @@ loadTodosBtn.addEventListener("click", async () => {
         updateStats(todoList);
         renderTodoList(todoList);
     } catch (error) {
-        let errorMessage = "";
+        let errorMessage = "Có lỗi xảy ra khi tải thông tin user";
 
         if (error.isNetworkError && error instanceof TypeError) {
             errorMessage = "Network Error!";
@@ -458,8 +457,6 @@ loadTodosBtn.addEventListener("click", async () => {
             errorMessage = "User không tồn tại!";
         } else if (error.status >= 500 && error.status < 600) {
             errorMessage = "Lỗi Server!";
-        } else {
-            errorMessage = "Có lỗi xảy ra khi tải thông tin user";
         }
 
         showError(
