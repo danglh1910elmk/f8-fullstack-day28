@@ -17,6 +17,10 @@ function sendRequest(method, url) {
                 reject(this.status);
             }
         };
+
+        xhr.onerror = function () {
+            reject("Network Error!");
+        };
     });
 }
 
@@ -65,23 +69,23 @@ function displayUserInfo(user) {
 searchUserBtn.addEventListener("click", () => {
     const userID = +userIDInput.value;
 
-    if (!userID || userID < 1 || userID > 10) {
-        // trường hợp nhấn tìm kiếm nhưng input để trống hoặc trong khoảng không hợp lệ
+    // input để trống
+    if (!userID) {
         showError(
-            "Nhập 1 số từ 1 đến 10",
+            "Không được để trống User ID!",
             userErrorElement,
             userErrorTextElement,
             userProfileCard
         );
-        // clear input
-        userIDInput.value = "";
-        // focus
+
+        userIDInput.value = ""; // clear input
         userIDInput.focus();
         return;
     }
 
     userErrorElement.style.display = "none"; // ẩn thông báo lỗi, nếu có
     userLoadingElement.style.display = "block"; // hiển thị trạng thái loading khi click
+
     const url = `${API_BASE}/users/${userID}`;
 
     sendRequest("GET", url)
@@ -89,8 +93,21 @@ searchUserBtn.addEventListener("click", () => {
             displayUserInfo(user);
         })
         .catch((error) => {
+            // xử lý lỗi
+            let errorMessage = "";
+
+            if (error === 404) {
+                errorMessage = "User không tồn tại!";
+            } else if (error >= 500 && error < 600) {
+                errorMessage = "Lỗi Server!";
+            } else if (error === "Network Error!") {
+                errorMessage = error;
+            } else {
+                errorMessage = "Có lỗi xảy ra khi tải thông tin user";
+            }
+
             showError(
-                "Có lỗi xảy ra khi tải thông tin user",
+                errorMessage,
                 userErrorElement,
                 userErrorTextElement,
                 userProfileCard
@@ -101,10 +118,8 @@ searchUserBtn.addEventListener("click", () => {
         .finally(() => {
             userLoadingElement.style.display = "none"; // ẩn trạng thái loading
 
-            // clear input
-            userIDInput.value = "";
-            // focus
-            userIDInput.focus();
+            userIDInput.value = ""; // clear input
+            userIDInput.focus(); // focus
         });
 });
 
@@ -212,6 +227,7 @@ function loadMorePosts(amount) {
     }
 
     postsLoadingElement.style.display = "block"; // hiển thị hiệu ứng loading posts
+    postsErrorElement.style.display = "none";
 
     // 1 mảng các promise
     const userRequests = newPosts.map((post) => {
@@ -224,7 +240,15 @@ function loadMorePosts(amount) {
             renderPosts(newPosts, users);
         })
         .catch((error) => {
-            postsErrorElement.style.display = "block"; // hiển thị thông báo lỗi
+            let errorMessage = "";
+
+            if (error === "Network Error!") {
+                errorMessage = error;
+            } else {
+                errorMessage = "Có lỗi xảy ra khi tải posts!";
+            }
+
+            showError(errorMessage, postsErrorElement, postsErrorText);
             throw new Error(`HTTP code: ${error}`);
         })
         .finally(() => {
@@ -234,10 +258,10 @@ function loadMorePosts(amount) {
 
 // Tự động load 5 posts đầu tiên khi vào trang
 postsLoadingElement.style.display = "block"; // hiển thị hiệu ứng loading posts
-// const url = `${API_BASE}/posts`;
-const url = `${API_BASE}/posts?_limit=11`;
+// const postsUrl = `${API_BASE}/posts`;
+const postsUrl = `${API_BASE}/posts?_limit=11`;
 
-sendRequest("GET", url)
+sendRequest("GET", postsUrl)
     .then((posts) => {
         allPosts = posts;
         const firstFivePosts = posts.slice(0, 5);
@@ -245,11 +269,12 @@ sendRequest("GET", url)
         // hiển thị nút load more posts
         loadMoreBtn.style.display = "block";
 
-        // nếu số lượng posts >=5 thì tăng displayedPostCount lên 5, nếu không gán = posts.length
+        // nếu số lượng posts >=5 thì tăng displayedPostCount lên 5, nếu không, gán = posts.length
         posts.length >= 5
             ? (displayedPostCount = 5)
             : (displayedPostCount = posts.length);
 
+        // đề bài yêu cầu phải hiện tên tác giả trên mỗi bài post
         // lấy user -> suy ra userName để gắn vào mỗi post
         const userRequests = firstFivePosts.map((post) => {
             const userUrl = `${API_BASE}/users/${post.userId}`;
@@ -266,7 +291,21 @@ sendRequest("GET", url)
         renderPosts(firstFivePosts, users);
     })
     .catch((error) => {
-        postsErrorElement.style.display = "block";
+        let errorMessage = "";
+
+        if (error === "Network Error!") {
+            errorMessage = error;
+        } else {
+            errorMessage = "Có lỗi xảy ra khi tải posts!";
+        }
+
+        showError(
+            errorMessage,
+            postsErrorElement,
+            postsErrorText,
+            postsContainer
+        );
+
         throw new Error(`HTTP code: ${error}`);
     })
     .finally(() => {
@@ -275,17 +314,22 @@ sendRequest("GET", url)
 
 // khi nhấn vào Xem comments
 postsContainer.addEventListener("click", (e) => {
-    const postItem = e.target.closest(".post-item");
-    const commentsContainer = postItem?.querySelector(".comments-container");
     const showCommentsButton = e.target.closest(".show-comments-btn");
-    const commentsLoadingElement = postItem?.querySelector(".comments-loading");
-    const commentsErrorElement = postItem?.querySelector(".comments-error");
-
     // nếu không nhấn trúng showCommentsButton thì không làm gì
     if (!showCommentsButton) return;
 
+    const postItem = e.target.closest(".post-item");
+    const commentsContainer = postItem.querySelector(".comments-container");
+    const commentsLoadingElement = postItem.querySelector(".comments-loading");
+    const commentsErrorElement = postItem.querySelector(".comments-error");
+    const commentsErrorTextElement = postItem.querySelector(
+        ".comments-error-text"
+    );
+
     const postId = showCommentsButton.dataset.postId;
     const commentUrl = `${API_BASE}/posts/${postId}/comments`;
+
+    commentsErrorElement.style.display = "none";
     commentsLoadingElement.style.display = "block"; // hiển thị hiệu ứng loading comments
 
     sendRequest("GET", commentUrl)
@@ -293,7 +337,15 @@ postsContainer.addEventListener("click", (e) => {
             renderComments(comments, commentsContainer);
         })
         .catch((error) => {
+            // lỗi
+            if (error === "Network Error!") {
+                commentsErrorTextElement.textContent = error;
+            } else {
+                commentsErrorTextElement.textContent =
+                    "Có lỗi xảy ra khi tải comments!";
+            }
             commentsErrorElement.style.display = "block";
+
             throw new Error(`HTTP code: ${error}`);
         })
         .finally(() => {
@@ -378,52 +430,68 @@ loadTodosBtn.addEventListener("click", () => {
     canFilter = false;
     const userID = +todoUserIdInput.value;
 
-    if (!userID || userID < 1 || userID > 10) {
-        // trường hợp nhấn tìm kiếm nhưng input để trống hoặc trong khoảng không hợp lệ
+    // input để trống
+    if (!userID) {
         showError(
-            "Nhập 1 số từ 1 đến 10",
+            "Không được để trống User ID!",
             todosErrorElement,
             todosErrorTextElement,
             todoListContainer
         );
         resetStats();
-        // clear input
-        todoUserIdInput.value = "";
-        // focus
-        todoUserIdInput.focus();
+
+        todoUserIdInput.value = ""; // clear input
+        todoUserIdInput.focus(); // focus
         return;
     }
 
     todosErrorElement.style.display = "none"; // ẩn thông báo lỗi, nếu đang hiện
     todosLoadingElement.style.display = "block"; // hiển thị hiệu ứng loading
 
-    const url = `${API_BASE}/users/${userID}/todos`;
-    sendRequest("GET", url)
+    const userUrl = `${API_BASE}/users/${userID}`;
+
+    sendRequest("GET", userUrl)
+        .then((user) => {
+            // load todo list of this user
+            return sendRequest("GET", `${userUrl}/todos`);
+        })
         .then((todoList) => {
             allTodoList = todoList;
             canFilter = true;
 
-            addActiveClass(filterAllBtn); // thêm active vào filterAllBtn
+            addActiveClass(filterAllBtn); // add 'active' class to filterAllBtn
             updateStats(todoList);
             renderTodoList(todoList);
         })
         .catch((error) => {
+            let errorMessage = "";
+
+            if (error === 404) {
+                errorMessage = "User không tồn tại!";
+            } else if (error >= 500 && error < 600) {
+                errorMessage = "Lỗi Server!";
+            } else if (error === "Network Error!") {
+                errorMessage = error;
+            } else {
+                errorMessage = "Có lỗi xảy ra khi tải thông tin user";
+            }
+
             showError(
-                "Có lỗi xảy ra khi tải todos",
+                errorMessage,
                 todosErrorElement,
                 todosErrorTextElement,
                 todoListContainer
             );
+
             resetStats();
 
             throw new Error(`HTTP code: ${error}`);
         })
         .finally(() => {
-            todosLoadingElement.style.display = "none"; // ẩn hiệu ứng loading
-            // clear input
-            todoUserIdInput.value = "";
-            // focus
-            todoUserIdInput.focus();
+            todosLoadingElement.style.display = "none"; // ẩn trạng thái loading khi load xong
+
+            todoUserIdInput.value = ""; // clear input
+            todoUserIdInput.focus(); // focus
         });
 });
 
@@ -438,7 +506,7 @@ filterCompletedBtn.addEventListener("click", () => {
     if (!canFilter) return;
 
     const completedTodoList = allTodoList.filter((task) => {
-        return task.completed === true;
+        return task.completed;
     });
 
     addActiveClass(filterCompletedBtn);
@@ -449,7 +517,7 @@ filterIncompleteBtn.addEventListener("click", () => {
     if (!canFilter) return;
 
     const incompleteTodoList = allTodoList.filter((task) => {
-        return task.completed === false;
+        return !task.completed;
     });
 
     addActiveClass(filterIncompleteBtn);

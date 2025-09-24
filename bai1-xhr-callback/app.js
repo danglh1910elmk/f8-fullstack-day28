@@ -20,6 +20,10 @@ function sendRequest(method, url, callback) {
             callback(error, null);
         }
     };
+
+    xhr.onerror = function () {
+        callback("Network Error!", null);
+    };
 }
 
 // ===================================================
@@ -68,19 +72,17 @@ searchUserBtn.addEventListener("click", () => {
     const userID = +userIDInput.value;
     const url = `${API_BASE}/users/${userID}`;
 
-    if (!userID || userID < 1 || userID > 10) {
-        // trường hợp nhấn tìm kiếm nhưng input để trống hoặc trong khoảng không hợp lệ
-        // alert("Enter an user ID!");
+    // input để trống
+    if (!userID) {
         showError(
-            "Nhập 1 số từ 1 đến 10",
+            "Không được để trống User ID!",
             userErrorElement,
             userErrorTextElement,
             userProfileCard
         );
-        // clear input
-        userIDInput.value = "";
-        // focus
-        userIDInput.focus();
+
+        userIDInput.value = ""; // clear input
+        userIDInput.focus(); // focus
         return;
     }
 
@@ -91,21 +93,23 @@ searchUserBtn.addEventListener("click", () => {
         userLoadingElement.style.display = "none"; // ẩn trạng thái loading khi load xong
 
         if (!error) {
-            if (user) {
-                displayUserInfo(user);
-            } else {
-                // nếu user không tồn tại thì hiển thị thông báo lỗi && ẩn userProfileCard
-                showError(
-                    "User không tồn tại!",
-                    userErrorElement,
-                    userErrorTextElement,
-                    userProfileCard
-                );
-            }
+            displayUserInfo(user);
         } else {
-            // nếu có lỗi khi tải
+            // xử lý lỗi
+            let errorMessage = "";
+
+            if (error === 404) {
+                errorMessage = "User không tồn tại!";
+            } else if (error >= 500 && error < 600) {
+                errorMessage = "Lỗi Server!";
+            } else if (error === "Network Error!") {
+                errorMessage = error;
+            } else {
+                errorMessage = "Có lỗi xảy ra khi tải thông tin user";
+            }
+
             showError(
-                "Có lỗi xảy ra khi tải thông tin user",
+                errorMessage,
                 userErrorElement,
                 userErrorTextElement,
                 userProfileCard
@@ -113,12 +117,10 @@ searchUserBtn.addEventListener("click", () => {
 
             throw new Error(`HTTP code: ${error}`);
         }
-    });
 
-    // clear input
-    userIDInput.value = "";
-    // focus
-    userIDInput.focus();
+        userIDInput.value = ""; // clear input
+        userIDInput.focus(); // focus
+    });
 });
 
 // =====================================================
@@ -198,16 +200,20 @@ function renderComments(comments, container) {
 // Tự động load 5 posts đầu tiên khi vào trang
 postsLoadingElement.style.display = "block"; // hiển thị hiệu ứng loading
 sendRequest("GET", `${API_BASE}/posts?_limit=5`, (error, posts) => {
-    postsLoadingElement.style.display = "none"; // ẩn hiệu ứng loading khi load xong
+    // postsLoadingElement.style.display = "none"; // ẩn hiệu ứng loading khi load xong
 
     if (!error) {
         posts.forEach((post) => {
-            const url = `${API_BASE}/users/${post.userId}`;
-            sendRequest("GET", url, (error, user) => {
+            const userUrl = `${API_BASE}/users/${post.userId}`;
+            // đề bài yêu cầu phải hiện tên tác giả trên mỗi bài post
+            sendRequest("GET", userUrl, (error, user) => {
+                postsLoadingElement.style.display = "none"; // ẩn hiệu ứng loading khi load xong
+
                 if (!error) {
                     // tạo postItem sau đó thêm vào postsContainer
                     const postItem = generatePostItem(post, user.name);
-                    postsContainer.innerHTML += postItem;
+                    // postsContainer.innerHTML += postItem;
+                    postsContainer.insertAdjacentHTML("beforeend", postItem);
                 } else {
                     // xử lý lỗi
                     postsErrorElement.style.display = "block";
@@ -220,7 +226,22 @@ sendRequest("GET", `${API_BASE}/posts?_limit=5`, (error, posts) => {
         });
     } else {
         // xử lý lỗi
-        postsErrorElement.style.display = "block";
+        let errorMessage = "";
+
+        if (error === "Network Error!") {
+            errorMessage = error;
+        } else {
+            errorMessage = "Có lỗi xảy ra khi tải posts!";
+        }
+
+        showError(
+            errorMessage,
+            postsErrorElement,
+            postsErrorText,
+            postsContainer
+        );
+
+        postsLoadingElement.style.display = "none"; // ẩn hiệu ứng loading khi load xong
 
         throw new Error(`HTTP code: ${error}`);
     }
@@ -228,14 +249,17 @@ sendRequest("GET", `${API_BASE}/posts?_limit=5`, (error, posts) => {
 
 // khi nhấn vào Xem comments
 postsContainer.addEventListener("click", (e) => {
-    const postItem = e.target.closest(".post-item");
-    const commentsContainer = postItem?.querySelector(".comments-container");
     const showCommentsButton = e.target.closest(".show-comments-btn");
-    const commentsLoadingElement = postItem?.querySelector(".comments-loading");
-    const commentsErrorElement = postItem?.querySelector(".comments-error");
-
     // nếu không nhấn trúng showCommentsButton thì không làm gì
     if (!showCommentsButton) return;
+
+    const postItem = e.target.closest(".post-item");
+    const commentsContainer = postItem.querySelector(".comments-container");
+    const commentsLoadingElement = postItem.querySelector(".comments-loading");
+    const commentsErrorElement = postItem.querySelector(".comments-error");
+    const commentsErrorTextElement = postItem.querySelector(
+        ".comments-error-text"
+    );
 
     const postId = showCommentsButton.dataset.postId;
     const url = `${API_BASE}/posts/${postId}/comments`;
@@ -248,7 +272,14 @@ postsContainer.addEventListener("click", (e) => {
             renderComments(comments, commentsContainer);
         } else {
             // lỗi
+            if (error === "Network Error!") {
+                commentsErrorTextElement.textContent = error;
+            } else {
+                commentsErrorTextElement.textContent =
+                    "Có lỗi xảy ra khi tải comments!";
+            }
             commentsErrorElement.style.display = "block";
+
             throw new Error(`HTTP code: ${error}`);
         }
     });
@@ -285,10 +316,10 @@ function renderTodoList(todoList) {
                     }"
                     data-todo-id="${task.id}"
                     data-completed="${task.completed}"
-                >
-                    <div class="todo-checkbox"></div>
-                    <div class="todo-text">${escapeHTML(task.title)}</div>
-                </div>`;
+                    >
+                        <div class="todo-checkbox"></div>
+                        <div class="todo-text">${escapeHTML(task.title)}</div>
+                    </div>`;
         })
         .join("");
 
@@ -327,54 +358,83 @@ loadTodosBtn.addEventListener("click", () => {
     canFilter = false;
     const userID = +todoUserIdInput.value;
 
-    if (!userID || userID < 1 || userID > 10) {
-        // trường hợp nhấn tìm kiếm nhưng input để trống hoặc trong khoảng không hợp lệ
+    // input để trống
+    if (!userID) {
         showError(
-            "Nhập 1 số từ 1 đến 10",
+            "Không được để trống User ID!",
             todosErrorElement,
             todosErrorTextElement,
             todoListContainer
         );
         resetStats();
-        // clear input
-        todoUserIdInput.value = "";
-        // focus
-        todoUserIdInput.focus();
+
+        todoUserIdInput.value = ""; // clear input
+        todoUserIdInput.focus(); // focus
         return;
     }
 
     todosErrorElement.style.display = "none"; // ẩn thông báo lỗi, nếu đang hiện
     todosLoadingElement.style.display = "block"; // hiển thị hiệu ứng loading
 
-    const url = `${API_BASE}/users/${userID}/todos`;
-    sendRequest("GET", url, (error, todoList) => {
-        // ẩn hiệu ứng loading
-        todosLoadingElement.style.display = "none";
-        if (!error) {
-            allTodoList = todoList;
-            canFilter = true;
+    const userUrl = `${API_BASE}/users/${userID}`;
 
-            addActiveClass(filterAllBtn); // thêm active vào filterAllBtn
-            updateStats(todoList);
-            renderTodoList(todoList);
+    // ! nếu user không tồn tại, VD gọi https://jsonplaceholder.typicode.com/users/1000/todos -> vẫn trả về 200, không phải 404 nên em phải gọi API 2 lần
+    sendRequest("GET", userUrl, (error, user) => {
+        if (!error) {
+            // load todo list of this user
+            sendRequest("GET", `${userUrl}/todos`, (error, todoList) => {
+                todosLoadingElement.style.display = "none"; // ẩn trạng thái loading khi load xong
+
+                if (!error) {
+                    allTodoList = todoList;
+                    canFilter = true;
+
+                    addActiveClass(filterAllBtn); // add 'active' class to filterAllBtn
+                    updateStats(todoList);
+                    renderTodoList(todoList);
+                } else {
+                    // xử lý lỗi
+                    showError(
+                        "Có lỗi xảy ra khi tải todos",
+                        todosErrorElement,
+                        todosErrorTextElement,
+                        todoListContainer
+                    );
+                    resetStats();
+
+                    throw new Error(`HTTP code: ${error}`);
+                }
+            });
         } else {
             // xử lý lỗi
+            let errorMessage = "";
+
+            if (error === 404) {
+                errorMessage = "User không tồn tại!";
+            } else if (error >= 500 && error < 600) {
+                errorMessage = "Lỗi Server!";
+            } else if (error === "Network Error!") {
+                errorMessage = error;
+            } else {
+                errorMessage = "Có lỗi xảy ra khi tải thông tin user";
+            }
+
             showError(
-                "Có lỗi xảy ra khi tải todos",
+                errorMessage,
                 todosErrorElement,
                 todosErrorTextElement,
                 todoListContainer
             );
+
+            todosLoadingElement.style.display = "none"; // ẩn trạng thái loading khi load xong
             resetStats();
 
             throw new Error(`HTTP code: ${error}`);
         }
-    });
 
-    // clear input
-    todoUserIdInput.value = "";
-    // focus
-    todoUserIdInput.focus();
+        todoUserIdInput.value = ""; // clear input
+        todoUserIdInput.focus(); // focus
+    });
 });
 
 filterAllBtn.addEventListener("click", () => {
@@ -388,7 +448,7 @@ filterCompletedBtn.addEventListener("click", () => {
     if (!canFilter) return;
 
     const completedTodoList = allTodoList.filter((task) => {
-        return task.completed === true;
+        return task.completed;
     });
 
     addActiveClass(filterCompletedBtn);
@@ -399,7 +459,7 @@ filterIncompleteBtn.addEventListener("click", () => {
     if (!canFilter) return;
 
     const incompleteTodoList = allTodoList.filter((task) => {
-        return task.completed === false;
+        return !task.completed;
     });
 
     addActiveClass(filterIncompleteBtn);
